@@ -1,0 +1,457 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Manufacturing Inventory & Production System</title>
+  <style>
+    * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { margin: 0; background: #f1f5f9; color: #0f172a; text-align: center; }
+    header { background: #0f172a; color: #f8fafc; padding: 14px clamp(18px, 4vw, 48px); display: flex; justify-content: space-between; align-items: center; gap: 24px; border-bottom: 3px solid #2563eb; box-shadow: 0 2px 8px rgba(15, 23, 42, .16); }
+    .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .brand-mark { width: 42px; height: 42px; flex: 0 0 auto; display: grid; place-items: center; border: 1px solid rgba(147, 197, 253, .35); border-radius: 10px; background: linear-gradient(145deg, #2563eb, #1d4ed8); color: #fff; font-size: 14px; font-weight: 700; letter-spacing: .04em; }
+    .brand-copy { text-align: left; }
+    header h1 { margin: 0; font-size: clamp(16px, 2vw, 20px); font-weight: 650; letter-spacing: -.02em; }
+    .brand-copy p { margin: 4px 0 0; color: #94a3b8; font-size: 12px; letter-spacing: .04em; }
+    .header-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex: 0 0 auto; }
+    .badge { background: rgba(148, 163, 184, .12); border: 1px solid rgba(148, 163, 184, .24); color: #e2e8f0; padding: 7px 12px; border-radius: 999px; font-size: 12px; }
+    header button.danger { border: 1px solid rgba(248, 113, 113, .4); border-radius: 7px; background: #7f1d1d; padding: 8px 12px; font-size: 13px; }
+    header button.danger:hover { background: #991b1b; }
+    .container { max-width: 1100px; margin: 24px auto; padding: 0 16px; display: grid; justify-items: center; gap: 20px; }
+    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
+    .card { width: 100%; background: #fff; border-radius: 10px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); text-align: center; }
+    .card h2 { margin-top: 0; font-size: 16px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; }
+    label { display: block; font-size: 12px; font-weight: 600; margin-top: 10px; color: #475569; text-align: center; }
+    input, select { width: 100%; padding: 8px 10px; margin-top: 4px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; text-align: center; }
+    button { margin-top: 14px; padding: 9px 14px; border: none; border-radius: 6px; background: #2563eb; color: #fff; font-weight: 600; cursor: pointer; }
+    button:hover { background: #1d4ed8; }
+    button.secondary { background: #475569; }
+    button.danger { background: #dc2626; margin-top: 0; padding: 6px 10px; font-size: 12px; }
+    button.small { margin-top: 0; padding: 5px 9px; font-size: 12px; background: #059669; }
+    table { width: 100%; border-collapse: collapse; margin: 10px auto 0; font-size: 13px; }
+    th, td { text-align: center; padding: 8px 10px; border-bottom: 1px solid #e2e8f0; }
+    th { background: #f8fafc; color: #475569; }
+    .alert { padding: 10px 14px; border-radius: 6px; font-size: 13px; display: none; }
+    .alert.ok { background: #dcfce7; color: #166534; display: block; }
+    .alert.err { background: #fee2e2; color: #991b1b; display: block; }
+    .low-stock { color: #dc2626; font-weight: 700; }
+    .status-pill { padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; background: #e2e8f0; }
+    .hidden { display: none; }
+    .dashboard-nav { width: 100%; max-width: 1000px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; }
+    .dashboard-nav button { margin: 0; }
+    .dashboard-nav button[aria-selected="true"] { background: #1e40af; }
+    .password-field { display: flex; align-items: center; gap: 8px; }
+    .password-field input { flex: 1; min-width: 0; }
+    .password-toggle { margin-top: 4px; padding: 8px 10px; display: inline-flex; align-items: center; justify-content: center; }
+    .password-toggle svg { width: 18px; height: 18px; display: block; }
+    .password-toggle .eye-off, .password-toggle.is-visible .eye { display: none; }
+    .password-toggle.is-visible .eye-off { display: block; }
+    .auth-panel { display: flex; justify-content: center; }
+    .auth-panel.hidden { display: none; }
+    .auth-panel > .card { width: 100%; max-width: 440px; }
+    .dashboard-panel .card { max-width: 100%; margin: 0 auto; }
+    .auth-switch { display: block; margin: 14px auto 0; padding: 0; background: none; color: #2563eb; }
+    button.auth-switch:hover { background: none; color: #1d4ed8; text-decoration: underline; }
+    @media (max-width: 600px) {
+      header { flex-direction: column; align-items: stretch; gap: 12px; }
+      .brand { justify-content: center; }
+      .brand-copy { text-align: center; }
+      .header-actions { justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">MI</div>
+      <div class="brand-copy">
+        <h1>Manufacturing Inventory &amp; Production Monitoring</h1>
+        <p>OPERATIONS MANAGEMENT SYSTEM</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <span id="userInfo" class="badge">Not Logged In</span>
+      <button id="logoutBtn" class="danger hidden" onclick="logout()">Logout</button>
+    </div>
+  </header>
+
+  <div class="container">
+    <div id="banner" class="alert"></div>
+
+    <!-- AUTH SECTION -->
+    <div id="authSection" class="auth-panel">
+      <div id="loginCard" class="card">
+        <h2>Login</h2>
+        <label for="loginUsername">Username</label>
+        <input id="loginUsername" autocomplete="username" placeholder="e.g. admin" />
+        <label for="loginPassword">Password</label>
+        <div class="password-field">
+          <input id="loginPassword" type="password" autocomplete="current-password" placeholder="Password123!" />
+          <button class="secondary password-toggle" type="button" aria-label="Show password" title="Show password" aria-controls="loginPassword" aria-pressed="false" onclick="togglePassword('loginPassword', this)">
+            <svg class="eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+            <svg class="eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="m3 3 18 18"></path>
+              <path d="M10.6 10.6a2 2 0 0 0 2.8 2.8"></path>
+              <path d="M9.9 5.2A10.7 10.7 0 0 1 12 5c6.4 0 10 7 10 7a15.7 15.7 0 0 1-3 3.8"></path>
+              <path d="M6.2 6.2C3.5 8 2 12 2 12s3.6 7 10 7a10.7 10.7 0 0 0 4-.8"></path>
+            </svg>
+          </button>
+        </div>
+        <button onclick="login()">Login</button>
+        <button class="auth-switch" type="button" aria-controls="registerCard" onclick="showRegister()">New here? Create an account</button>
+      </div>
+
+      <div id="registerCard" class="card hidden">
+        <h2>Register New Account</h2>
+        <label for="regUsername">Username</label>
+        <input id="regUsername" autocomplete="username" placeholder="e.g. inv_staff1" />
+        <label for="regPassword">Password</label>
+        <div class="password-field">
+          <input id="regPassword" type="password" autocomplete="new-password" placeholder="Password123!" />
+          <button class="secondary password-toggle" type="button" aria-label="Show password" title="Show password" aria-controls="regPassword" aria-pressed="false" onclick="togglePassword('regPassword', this)">
+            <svg class="eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+            <svg class="eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="m3 3 18 18"></path>
+              <path d="M10.6 10.6a2 2 0 0 0 2.8 2.8"></path>
+              <path d="M9.9 5.2A10.7 10.7 0 0 1 12 5c6.4 0 10 7 10 7a15.7 15.7 0 0 1-3 3.8"></path>
+              <path d="M6.2 6.2C3.5 8 2 12 2 12s3.6 7 10 7a10.7 10.7 0 0 0 4-.8"></path>
+            </svg>
+          </button>
+        </div>
+        <label>Role</label>
+        <select id="regRole">
+          <option value="ADMIN">ADMIN</option>
+          <option value="INVENTORY_STAFF">INVENTORY_STAFF</option>
+          <option value="PRODUCTION_STAFF">PRODUCTION_STAFF</option>
+        </select>
+        <button class="secondary" onclick="register()">Register</button>
+        <button class="auth-switch" type="button" aria-controls="loginCard" onclick="showLogin()">Already have an account? Login</button>
+      </div>
+    </div>
+
+    <!-- DASHBOARD SECTION -->
+    <div id="appSection" class="hidden">
+      <nav class="dashboard-nav" role="tablist" aria-label="Dashboard sections">
+        <button id="addMaterialTab" type="button" role="tab" aria-selected="true" aria-controls="addMaterialPanel" onclick="showDashboardSection('addMaterialPanel')">Add Raw Material</button>
+        <button id="startProductionTab" type="button" role="tab" aria-selected="false" aria-controls="startProductionPanel" onclick="showDashboardSection('startProductionPanel')">Start Production</button>
+        <button id="inventoryTab" type="button" role="tab" aria-selected="false" aria-controls="inventoryPanel" onclick="showDashboardSection('inventoryPanel')">Raw Materials Inventory</button>
+        <button id="productionRunsTab" type="button" role="tab" aria-selected="false" aria-controls="productionRunsPanel" onclick="showDashboardSection('productionRunsPanel')">Production Runs Monitoring</button>
+      </nav>
+
+      <section id="addMaterialPanel" class="dashboard-panel" role="tabpanel" aria-labelledby="addMaterialTab">
+        <!-- ADD RAW MATERIAL -->
+        <div class="card" style="max-width: 700px;">
+          <h2>Add Raw Material (ADMIN / INVENTORY_STAFF)</h2>
+          <label>SKU</label>
+          <input id="matSku" placeholder="RM-002" />
+          <label>Name</label>
+          <input id="matName" placeholder="Aluminum Sheet" />
+          <label>Unit</label>
+          <input id="matUnit" placeholder="kg" />
+          <label>Initial Quantity On Hand</label>
+          <input id="matQty" type="number" step="0.01" placeholder="100" />
+          <label>Reorder Level</label>
+          <input id="matReorder" type="number" step="0.01" placeholder="20" />
+          <button onclick="addMaterial()">Save Raw Material</button>
+        </div>
+      </section>
+
+      <section id="startProductionPanel" class="dashboard-panel hidden" role="tabpanel" aria-labelledby="startProductionTab">
+        <!-- CREATE PRODUCTION RUN -->
+        <div class="card" style="max-width: 700px;">
+          <h2>Start Production Run (ADMIN / PRODUCTION_STAFF)</h2>
+          <label>Batch Code</label>
+          <input id="prodBatch" placeholder="BATCH-002" />
+          <label>Product Name</label>
+          <input id="prodName" placeholder="Steel Frame" />
+          <label>Raw Material</label>
+          <select id="prodMatId"></select>
+          <label>Quantity Used</label>
+          <input id="prodUsed" type="number" step="0.01" placeholder="10" />
+          <label>Target / Initial Quantity Produced</label>
+          <input id="prodProduced" type="number" step="0.01" placeholder="25" />
+          <button onclick="addProduction()">Create Production Run</button>
+        </div>
+      </section>
+
+      <!-- INVENTORY TABLE -->
+      <section id="inventoryPanel" class="dashboard-panel hidden" role="tabpanel" aria-labelledby="inventoryTab">
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h2 style="border:none; margin:0; padding:0;">Raw Materials Inventory</h2>
+            <button class="secondary" style="margin:0;" onclick="loadAll()">Refresh</button>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>SKU</th>
+                <th>Name</th>
+                <th>Unit</th>
+                <th>Qty On Hand</th>
+                <th>Reorder Level</th>
+                <th>Stock Status</th>
+              </tr>
+            </thead>
+            <tbody id="inventoryBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- PRODUCTION TABLE -->
+      <section id="productionRunsPanel" class="dashboard-panel hidden" role="tabpanel" aria-labelledby="productionRunsTab">
+        <div class="card">
+          <h2>Production Runs Monitoring</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Batch Code</th>
+                <th>Product</th>
+                <th>Raw Material</th>
+                <th>Qty Used</th>
+                <th>Qty Produced</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="productionBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    const API = '';
+    let token = localStorage.getItem('token') || '';
+
+    function showBanner(msg, isError = false) {
+      const el = document.getElementById('banner');
+      el.textContent = Array.isArray(msg) ? msg.join(', ') : msg;
+      el.className = 'alert ' + (isError ? 'err' : 'ok');
+    }
+
+    function parseJwt(t) {
+      try {
+        return JSON.parse(atob(t.split('.')[1]));
+      } catch {
+        return null;
+      }
+    }
+
+    function togglePassword(inputId, button) {
+      const input = document.getElementById(inputId);
+      const isVisible = input.type === 'text';
+      input.type = isVisible ? 'password' : 'text';
+      button.classList.toggle('is-visible', !isVisible);
+      button.setAttribute('aria-label', isVisible ? 'Show password' : 'Hide password');
+      button.title = isVisible ? 'Show password' : 'Hide password';
+      button.setAttribute('aria-pressed', String(!isVisible));
+    }
+
+    function showRegister() {
+      document.getElementById('loginCard').classList.add('hidden');
+      document.getElementById('registerCard').classList.remove('hidden');
+    }
+
+    function showLogin() {
+      document.getElementById('registerCard').classList.add('hidden');
+      document.getElementById('loginCard').classList.remove('hidden');
+    }
+
+    function updateAuthUI() {
+      const authSec = document.getElementById('authSection');
+      const appSec = document.getElementById('appSection');
+      const userInfo = document.getElementById('userInfo');
+      const logoutBtn = document.getElementById('logoutBtn');
+
+      if (token) {
+        const payload = parseJwt(token) || {};
+        userInfo.textContent = `${payload.username || 'User'} (${payload.role || 'AUTHENTICATED'})`;
+        authSec.classList.add('hidden');
+        appSec.classList.remove('hidden');
+        logoutBtn.classList.remove('hidden');
+        showDashboardSection('addMaterialPanel');
+        loadAll();
+      } else {
+        userInfo.textContent = 'Not Logged In';
+        authSec.classList.remove('hidden');
+        showLogin();
+        appSec.classList.add('hidden');
+        logoutBtn.classList.add('hidden');
+      }
+    }
+
+    function showDashboardSection(panelId) {
+      document.querySelectorAll('.dashboard-panel').forEach((panel) => {
+        panel.classList.toggle('hidden', panel.id !== panelId);
+      });
+      document.querySelectorAll('.dashboard-nav [role="tab"]').forEach((tab) => {
+        tab.setAttribute('aria-selected', String(tab.getAttribute('aria-controls') === panelId));
+      });
+    }
+
+    async function apiFetch(path, options = {}) {
+      const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const res = await fetch(API + path, { ...options, headers });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(Array.isArray(data.message) ? data.message.join(', ') : (data.message || `Error ${res.status}`));
+      }
+      return data;
+    }
+
+    async function register() {
+      try {
+        await apiFetch('/auth/register', {
+          method: 'POST',
+          body: JSON.stringify({
+            username: document.getElementById('regUsername').value.trim(),
+            password: document.getElementById('regPassword').value,
+            role: document.getElementById('regRole').value,
+          }),
+        });
+        showBanner('Account registered! You can now log in.');
+        document.getElementById('loginUsername').value = document.getElementById('regUsername').value.trim();
+        showLogin();
+      } catch (e) {
+        showBanner(e.message, true);
+      }
+    }
+
+    async function login() {
+      try {
+        const data = await apiFetch('/auth/login', {
+          method: 'POST',
+          body: JSON.stringify({
+            username: document.getElementById('loginUsername').value.trim(),
+            password: document.getElementById('loginPassword').value,
+          }),
+        });
+        token = data.access_token || data.token || '';
+        localStorage.setItem('token', token);
+        showBanner('Logged in successfully.');
+        updateAuthUI();
+      } catch (e) {
+        showBanner(e.message, true);
+      }
+    }
+
+    function logout() {
+      token = '';
+      localStorage.removeItem('token');
+      showBanner('Logged out.');
+      updateAuthUI();
+    }
+
+    async function addMaterial() {
+      try {
+        await apiFetch('/inventory', {
+          method: 'POST',
+          body: JSON.stringify({
+            sku: document.getElementById('matSku').value.trim(),
+            name: document.getElementById('matName').value.trim(),
+            unit: document.getElementById('matUnit').value.trim(),
+            quantityOnHand: Number(document.getElementById('matQty').value),
+            reorderLevel: Number(document.getElementById('matReorder').value || 0),
+          }),
+        });
+        showBanner('Raw material added.');
+        loadAll();
+      } catch (e) {
+        showBanner(e.message, true);
+      }
+    }
+
+    async function addProduction() {
+      try {
+        await apiFetch('/production', {
+          method: 'POST',
+          body: JSON.stringify({
+            batchCode: document.getElementById('prodBatch').value.trim(),
+            productName: document.getElementById('prodName').value.trim(),
+            rawMaterialId: Number(document.getElementById('prodMatId').value),
+            quantityUsed: Number(document.getElementById('prodUsed').value),
+            quantityProduced: Number(document.getElementById('prodProduced').value || 0),
+          }),
+        });
+        showBanner('Production run created and raw material stock deducted.');
+        loadAll();
+      } catch (e) {
+        showBanner(e.message, true);
+      }
+    }
+
+    async function completeRun(id) {
+      try {
+        await apiFetch(`/production/${id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ status: 'COMPLETED' }),
+        });
+        showBanner(`Production run #${id} marked as COMPLETED.`);
+        loadAll();
+      } catch (e) {
+        showBanner(e.message, true);
+      }
+    }
+
+    async function loadAll() {
+      try {
+        const [materials, runs] = await Promise.all([
+          apiFetch('/inventory'),
+          apiFetch('/production'),
+        ]);
+
+        const invBody = document.getElementById('inventoryBody');
+        const matSelect = document.getElementById('prodMatId');
+        invBody.innerHTML = '';
+        matSelect.innerHTML = '';
+
+        materials.forEach((m) => {
+          const isLow = Number(m.quantityOnHand) <= Number(m.reorderLevel);
+          invBody.innerHTML += `
+            <tr>
+              <td>${m.id}</td>
+              <td>${m.sku}</td>
+              <td>${m.name}</td>
+              <td>${m.unit}</td>
+              <td class="${isLow ? 'low-stock' : ''}">${m.quantityOnHand}</td>
+              <td>${m.reorderLevel}</td>
+              <td>${isLow ? '<span class="low-stock">LOW STOCK</span>' : 'OK'}</td>
+            </tr>`;
+          matSelect.innerHTML += `<option value="${m.id}">${m.sku} - ${m.name} (${m.quantityOnHand} ${m.unit})</option>`;
+        });
+
+        const prodBody = document.getElementById('productionBody');
+        prodBody.innerHTML = '';
+        runs.forEach((r) => {
+          const matLabel = r.rawMaterial ? `${r.rawMaterial.sku} (${r.rawMaterial.name})` : `#${r.rawMaterialId}`;
+          prodBody.innerHTML += `
+            <tr>
+              <td>${r.id}</td>
+              <td>${r.batchCode}</td>
+              <td>${r.productName}</td>
+              <td>${matLabel}</td>
+              <td>${r.quantityUsed}</td>
+              <td>${r.quantityProduced}</td>
+              <td><span class="status-pill">${r.status}</span></td>
+              <td>${r.status !== 'COMPLETED' ? `<button class="small" onclick="completeRun(${r.id})">Complete</button>` : '-'}</td>
+            </tr>`;
+        });
+      } catch (e) {
+        showBanner(e.message, true);
+      }
+    }
+
+    updateAuthUI();
+  </script>
+</body>
+</html>
