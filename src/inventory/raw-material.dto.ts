@@ -1,4 +1,4 @@
-﻿import { IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsOptional, IsString, Min, NotEquals, ValidateIf } from 'class-validator';
 
 export class CreateRawMaterialDto {
   @IsString()
@@ -37,6 +37,11 @@ export class UpdateRawMaterialDto {
   @Min(0)
   @IsOptional()
   quantityOnHand?: number;
+
+  @ValidateIf((_, value) => value !== undefined)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @NotEquals(0)
+  quantityAdjustment?: number;
 
   @IsNumber()
   @Min(0)

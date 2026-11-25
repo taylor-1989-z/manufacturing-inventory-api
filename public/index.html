@@ -197,10 +197,25 @@
                 <th>Qty On Hand</th>
                 <th>Reorder Level</th>
                 <th>Stock Status</th>
+                <th id="inventoryActionHeading" class="hidden">Actions</th>
+                <th id="inventoryDeleteHeading" class="hidden">Delete</th>
               </tr>
             </thead>
             <tbody id="inventoryBody"></tbody>
           </table>
+        </div>
+        <div id="materialEditCard" class="card hidden" style="max-width: 700px;">
+          <h2 id="materialEditHeading">Edit Raw Material</h2>
+          <label for="editMaterialName">Name</label>
+          <input id="editMaterialName" />
+          <label for="editMaterialUnit">Unit</label>
+          <input id="editMaterialUnit" />
+          <label for="editMaterialQuantity">Quantity On Hand</label>
+          <input id="editMaterialQuantity" type="number" min="0" step="0.01" />
+          <label for="editMaterialReorderLevel">Reorder Level</label>
+          <input id="editMaterialReorderLevel" type="number" min="0" step="0.01" />
+          <button type="button" onclick="updateMaterial()">Save Changes</button>
+          <button type="button" class="secondary" onclick="closeMaterialEdit()">Cancel</button>
         </div>
       </section>
 
@@ -219,6 +234,7 @@
                 <th>Qty Produced</th>
                 <th>Status</th>
                 <th>Action</th>
+                <th id="productionDeleteHeading" class="hidden">Delete</th>
               </tr>
             </thead>
             <tbody id="productionBody"></tbody>
@@ -231,6 +247,14 @@
   <script>
     const API = '';
     let token = localStorage.getItem('token') || '';
+    let currentRole = '';
+    let editingMaterialId = null;
+    const dashboardSectionRoles = {
+      addMaterialPanel: ['ADMIN', 'INVENTORY_STAFF'],
+      startProductionPanel: ['ADMIN', 'PRODUCTION_STAFF'],
+      inventoryPanel: ['ADMIN', 'INVENTORY_STAFF', 'PRODUCTION_STAFF'],
+      productionRunsPanel: ['ADMIN', 'INVENTORY_STAFF', 'PRODUCTION_STAFF'],
+    };
 
     function showBanner(msg, isError = false) {
       const el = document.getElementById('banner');
@@ -240,7 +264,12 @@
 
     function parseJwt(t) {
       try {
-        return JSON.parse(atob(t.split('.')[1]));
+        const payload = t.split('.')[1];
+        const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+        const paddedBase64 = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
+        const binaryPayload = atob(paddedBase64);
+        const bytes = Uint8Array.from(binaryPayload, (character) => character.charCodeAt(0));
+        return JSON.parse(new TextDecoder().decode(bytes));
       } catch {
         return null;
       }
@@ -274,27 +303,48 @@
 
       if (token) {
         const payload = parseJwt(token) || {};
+        currentRole = payload.role || '';
         userInfo.textContent = `${payload.username || 'User'} (${payload.role || 'AUTHENTICATED'})`;
         authSec.classList.add('hidden');
         appSec.classList.remove('hidden');
         logoutBtn.classList.remove('hidden');
-        showDashboardSection('addMaterialPanel');
+        document.getElementById('inventoryActionHeading').classList.toggle('hidden', !['ADMIN', 'INVENTORY_STAFF'].includes(currentRole));
+        document.getElementById('inventoryDeleteHeading').classList.toggle('hidden', currentRole !== 'ADMIN');
+        document.getElementById('productionDeleteHeading').classList.toggle('hidden', currentRole !== 'ADMIN');
+        showDashboardSection(currentRole === 'PRODUCTION_STAFF' ? 'startProductionPanel' : 'addMaterialPanel');
         loadAll();
       } else {
+        currentRole = '';
         userInfo.textContent = 'Not Logged In';
         authSec.classList.remove('hidden');
         showLogin();
         appSec.classList.add('hidden');
         logoutBtn.classList.add('hidden');
+        document.getElementById('inventoryActionHeading').classList.add('hidden');
+        document.getElementById('inventoryDeleteHeading').classList.add('hidden');
+        document.getElementById('productionDeleteHeading').classList.add('hidden');
       }
     }
 
     function showDashboardSection(panelId) {
+      const tabs = Array.from(document.querySelectorAll('.dashboard-nav [role="tab"]'));
+      const canAccessSection = (id) => {
+        const roles = dashboardSectionRoles[id];
+        return Array.isArray(roles) && roles.includes(currentRole);
+      };
+      const firstAccessibleTab = tabs.find((tab) => canAccessSection(tab.getAttribute('aria-controls')));
+      const activePanelId = canAccessSection(panelId)
+        ? panelId
+        : (firstAccessibleTab ? firstAccessibleTab.getAttribute('aria-controls') : '');
+
       document.querySelectorAll('.dashboard-panel').forEach((panel) => {
-        panel.classList.toggle('hidden', panel.id !== panelId);
+        panel.classList.toggle('hidden', panel.id !== activePanelId);
       });
-      document.querySelectorAll('.dashboard-nav [role="tab"]').forEach((tab) => {
-        tab.setAttribute('aria-selected', String(tab.getAttribute('aria-controls') === panelId));
+      tabs.forEach((tab) => {
+        const tabPanelId = tab.getAttribute('aria-controls');
+        const isAccessible = canAccessSection(tabPanelId);
+        tab.classList.toggle('hidden', !isAccessible);
+        tab.setAttribute('aria-selected', String(isAccessible && tabPanelId === activePanelId));
       });
     }
 
@@ -371,6 +421,106 @@
       }
     }
 
+    async function restockMaterial(id) {
+      const amountInput = document.getElementById(`restockAmount-${id}`);
+      const quantityAdjustment = Number(amountInput.value);
+      if (!Number.isFinite(quantityAdjustment) || quantityAdjustment <= 0) {
+        showBanner('Enter a restock quantity greater than zero.', true);
+        amountInput.focus();
+        return;
+      }
+
+      try {
+        await apiFetch(`/inventory/${id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ quantityAdjustment }),
+        });
+        showBanner('Raw material stock updated.');
+        loadAll();
+      } catch (e) {
+        showBanner(e.message, true);
+      }
+    }
+
+    async function openMaterialEdit(id) {
+      if (!['ADMIN', 'INVENTORY_STAFF'].includes(currentRole)) {
+        showBanner('You do not have permission to edit raw materials.', true);
+        return;
+      }
+
+      try {
+        const material = await apiFetch(`/inventory/${id}`);
+        editingMaterialId = material.id;
+        document.getElementById('materialEditHeading').textContent = `Edit Raw Material (${material.sku})`;
+        document.getElementById('editMaterialName').value = material.name;
+        document.getElementById('editMaterialUnit').value = material.unit;
+        document.getElementById('editMaterialQuantity').value = material.quantityOnHand;
+        document.getElementById('editMaterialReorderLevel').value = material.reorderLevel;
+        document.getElementById('materialEditCard').classList.remove('hidden');
+        document.getElementById('editMaterialName').focus();
+      } catch (e) {
+        showBanner(e.message, true);
+      }
+    }
+
+    function closeMaterialEdit() {
+      editingMaterialId = null;
+      document.getElementById('materialEditCard').classList.add('hidden');
+    }
+
+    async function updateMaterial() {
+      if (editingMaterialId === null || !['ADMIN', 'INVENTORY_STAFF'].includes(currentRole)) {
+        showBanner('You do not have permission to edit raw materials.', true);
+        return;
+      }
+
+      const name = document.getElementById('editMaterialName').value.trim();
+      const unit = document.getElementById('editMaterialUnit').value.trim();
+      const quantityInput = document.getElementById('editMaterialQuantity').value.trim();
+      const reorderLevelInput = document.getElementById('editMaterialReorderLevel').value.trim();
+      const quantityOnHand = Number(quantityInput);
+      const reorderLevel = Number(reorderLevelInput);
+      if (!name || !unit || !quantityInput || !reorderLevelInput
+        || !Number.isFinite(quantityOnHand) || quantityOnHand < 0
+        || !Number.isFinite(reorderLevel) || reorderLevel < 0) {
+        showBanner('Enter a name, unit, and valid non-negative quantity and reorder level.', true);
+        return;
+      }
+
+      try {
+        await apiFetch(`/inventory/${editingMaterialId}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ name, unit, quantityOnHand, reorderLevel }),
+        });
+        closeMaterialEdit();
+        showBanner('Raw material updated.');
+        loadAll();
+      } catch (e) {
+        showBanner(e.message, true);
+      }
+    }
+
+    async function deleteMaterial(id) {
+      if (currentRole !== 'ADMIN') {
+        showBanner('You do not have permission to delete raw materials.', true);
+        return;
+      }
+      if (!window.confirm('Delete this raw material? This action cannot be undone.')) {
+        return;
+      }
+
+      try {
+        await apiFetch(`/inventory/${id}`, { method: 'DELETE' });
+        if (editingMaterialId === id) {
+          closeMaterialEdit();
+        }
+        showBanner('Raw material deleted.');
+        loadAll();
+      } catch (e) {
+        showBanner(e.message, true);
+      }
+    }
+
     async function addProduction() {
       try {
         await apiFetch('/production', {
@@ -403,6 +553,24 @@
       }
     }
 
+    async function deleteProductionRun(id) {
+      if (currentRole !== 'ADMIN') {
+        showBanner('You do not have permission to delete production runs.', true);
+        return;
+      }
+      if (!window.confirm('Delete this production run and return its raw material quantity to inventory?')) {
+        return;
+      }
+
+      try {
+        await apiFetch(`/production/${id}`, { method: 'DELETE' });
+        showBanner(`Production run #${id} deleted and raw material stock restored.`);
+        loadAll();
+      } catch (e) {
+        showBanner(e.message, true);
+      }
+    }
+
     async function loadAll() {
       try {
         const [materials, runs] = await Promise.all([
@@ -426,6 +594,8 @@
               <td class="${isLow ? 'low-stock' : ''}">${m.quantityOnHand}</td>
               <td>${m.reorderLevel}</td>
               <td>${isLow ? '<span class="low-stock">LOW STOCK</span>' : 'OK'}</td>
+              ${['ADMIN', 'INVENTORY_STAFF'].includes(currentRole) ? `<td><input id="restockAmount-${m.id}" type="number" min="0.01" step="0.01" aria-label="Quantity to add for ${m.sku}" placeholder="Qty to add" /><button class="small" onclick="restockMaterial(${m.id})">Restock</button><button type="button" class="small secondary" onclick="openMaterialEdit(${m.id})">Edit</button></td>` : ''}
+              ${currentRole === 'ADMIN' ? `<td><button type="button" class="danger" onclick="deleteMaterial(${m.id})">Delete</button></td>` : ''}
             </tr>`;
           matSelect.innerHTML += `<option value="${m.id}">${m.sku} - ${m.name} (${m.quantityOnHand} ${m.unit})</option>`;
         });
@@ -443,7 +613,8 @@
               <td>${r.quantityUsed}</td>
               <td>${r.quantityProduced}</td>
               <td><span class="status-pill">${r.status}</span></td>
-              <td>${r.status !== 'COMPLETED' ? `<button class="small" onclick="completeRun(${r.id})">Complete</button>` : '-'}</td>
+                <td>${r.status !== 'COMPLETED' && ['ADMIN', 'PRODUCTION_STAFF'].includes(currentRole) ? `<button class="small" onclick="completeRun(${r.id})">Complete</button>` : '-'}</td>
+                ${currentRole === 'ADMIN' ? `<td><button type="button" class="danger" onclick="deleteProductionRun(${r.id})">Delete</button></td>` : ''}
             </tr>`;
         });
       } catch (e) {

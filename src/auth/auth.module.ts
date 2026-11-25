@@ -21,7 +21,7 @@ import { CorsSettingsService } from './cors-settings.service';
       useFactory: (config: ConfigService) => ({
         secret: config.get<string>('JWT_SECRET', 'super_secret_jwt_key_change_me'),
         signOptions: {
-          expiresIn: config.get<string>('JWT_EXPIRES_IN', '1d') as any,
+          expiresIn: config.get<string>('JWT_EXPIRES_IN', '1d'),
         },
       }),
     }),

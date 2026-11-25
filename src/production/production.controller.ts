@@ -1,6 +1,7 @@
 ﻿import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
@@ -42,5 +43,11 @@ export class ProductionController {
   @Roles(Role.ADMIN, Role.PRODUCTION_STAFF)
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateProductionRunDto) {
     return this.productionService.update(id, dto);
+  }
+
+  @Delete(':id')
+  @Roles(Role.ADMIN)
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.productionService.remove(id);
   }
 }
