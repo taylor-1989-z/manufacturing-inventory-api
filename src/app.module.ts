@@ -1,3 +1,6 @@
+﻿import { SuppliersModule } from './suppliers/suppliers.module';
+import { MaterialsModule } from './materials/materials.module';
+import { ProductsModule } from './products/products.module';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -28,6 +31,9 @@ import { ProductionModule } from './production/production.module';
       }),
     }),
     UsersModule,
+    ProductsModule,
+    MaterialsModule,
+    SuppliersModule,
     AuthModule,
     InventoryModule,
     ProductionModule,
@@ -36,3 +42,5 @@ import { ProductionModule } from './production/production.module';
   providers: [AppService],
 })
 export class AppModule {}
+
+
