@@ -8,6 +8,10 @@ RESTful backend API built with **NestJS**, **TypeORM**, and **MySQL** featuring 
 - JWT (@nestjs/jwt, Passport) & Role-Based Access Control
 - class-validator & class-transformer
 
+## API Testing & Development Tools
+- **Postman:** Used for testing endpoints, JWT login (ccess_token), role access checks (401 / 403), and full CRUD workflows
+- **VS Code & Git/GitHub:** Code editing, local database setup, and version control
+
 ## Roles & Permissions
 - ADMIN: Full access across authentication, inventory, and production.
 - INVENTORY_STAFF: Manage raw materials and restock inventory levels.
